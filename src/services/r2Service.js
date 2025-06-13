@@ -16,9 +16,10 @@ class R2Service {
    * @param {String} path - Request path
    * @param {Object} headers - Request headers
    * @param {String} body - Request body
+   * @param {Object} queryParams - Query parameters
    * @returns {Object} Headers with signature
    */
-  generateSignatureHeaders(method, path, headers = {}, body = '') {
+  generateSignatureHeaders(method, path, headers = {}, body = '', queryParams = {}) {
     const timestamp = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
     const date = timestamp.slice(0, 8);
 
@@ -27,10 +28,18 @@ class R2Service {
       .sort()
       .join(';');
 
+    // Create canonical query string
+    const canonicalQueryString = Object.keys(queryParams)
+      .sort()
+      .map(key => {
+        return `${encodeURIComponent(key)}=${encodeURIComponent(queryParams[key])}`;
+      })
+      .join('&');
+
     const canonicalRequest = [
       method,
       path,
-      '', // Query string
+      canonicalQueryString, // Query string
       ...Object.keys(headers)
         .sort()
         .map(h => `${h.toLowerCase()}:${headers[h]}\n`),
@@ -116,7 +125,7 @@ class R2Service {
       'X-Amz-Expires': expiresIn.toString(),
     };
 
-    const signedHeaders = this.generateSignatureHeaders('GET', path, headers, '');
+    const signedHeaders = this.generateSignatureHeaders('GET', path, headers, '', {});
     
     const params = new URLSearchParams({
       'X-Amz-Expires': expiresIn.toString(),
@@ -137,22 +146,23 @@ class R2Service {
    */
   async listObjects(options = {}) {
     try {
-      const queryParams = new URLSearchParams();
+      const queryParams = {};
       
-      if (options.prefix) queryParams.append('prefix', options.prefix);
-      if (options.delimiter) queryParams.append('delimiter', options.delimiter);
-      if (options.maxKeys) queryParams.append('max-keys', options.maxKeys);
-      if (options.startAfter) queryParams.append('start-after', options.startAfter);
+      if (options.prefix) queryParams.prefix = options.prefix;
+      if (options.delimiter) queryParams.delimiter = options.delimiter;
+      if (options.maxKeys) queryParams['max-keys'] = options.maxKeys;
+      if (options.startAfter) queryParams['start-after'] = options.startAfter;
 
+      const queryString = new URLSearchParams(queryParams).toString();
       const path = `/${this.bucketName}`;
-      const url = `${this.endpoint}${path}?${queryParams.toString()}`;
+      const url = `${this.endpoint}${path}?${queryString}`;
       
       const headers = {
         'Host': new URL(this.endpoint).host,
         'x-amz-content-sha256': crypto.createHash('sha256').update('').digest('hex'),
       };
 
-      const signedHeaders = this.generateSignatureHeaders('GET', path, headers, '');
+      const signedHeaders = this.generateSignatureHeaders('GET', path, headers, '', queryParams);
 
       const response = await axios({
         method: 'GET',
@@ -185,7 +195,7 @@ class R2Service {
         'x-amz-content-sha256': crypto.createHash('sha256').update('').digest('hex'),
       };
 
-      const signedHeaders = this.generateSignatureHeaders('HEAD', path, headers, '');
+      const signedHeaders = this.generateSignatureHeaders('HEAD', path, headers, '', {});
 
       const response = await axios({
         method: 'HEAD',
@@ -228,7 +238,7 @@ class R2Service {
         'x-amz-content-sha256': crypto.createHash('sha256').update('').digest('hex'),
       };
 
-      const signedHeaders = this.generateSignatureHeaders('DELETE', path, headers, '');
+      const signedHeaders = this.generateSignatureHeaders('DELETE', path, headers, '', {});
 
       await axios({
         method: 'DELETE',
