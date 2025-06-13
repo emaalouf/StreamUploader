@@ -8,6 +8,19 @@ class R2Service {
     this.bucketName = process.env.R2_BUCKET_NAME || 'sleepmp3';
     this.region = 'auto';
     this.endpoint = `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+    
+    // Debug logging
+    console.log('R2Service initialized with:');
+    console.log('Endpoint:', this.endpoint);
+    console.log('Bucket:', this.bucketName);
+    console.log('Account ID present:', !!process.env.CLOUDFLARE_ACCOUNT_ID);
+    console.log('Access Key ID present:', !!this.accessKeyId);
+    console.log('Secret Access Key present:', !!this.secretAccessKey);
+    
+    // Check if credentials are missing
+    if (!process.env.CLOUDFLARE_ACCOUNT_ID || !this.accessKeyId || !this.secretAccessKey) {
+      console.error('⚠️ WARNING: Missing R2 credentials! Check your .env file.');
+    }
   }
 
   /**
@@ -22,8 +35,20 @@ class R2Service {
   generateSignatureHeaders(method, path, headers = {}, body = '', queryParams = {}) {
     const timestamp = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
     const date = timestamp.slice(0, 8);
+    
+    // Ensure content-type is set for proper signing
+    const headersToSign = {
+      ...headers,
+      'content-type': headers['content-type'] || 'application/octet-stream',
+    };
 
-    const signedHeaders = Object.keys(headers)
+    // Convert all header keys to lowercase for signing
+    const normalizedHeaders = {};
+    Object.keys(headersToSign).forEach(key => {
+      normalizedHeaders[key.toLowerCase()] = headersToSign[key];
+    });
+
+    const signedHeaders = Object.keys(normalizedHeaders)
       .map(h => h.toLowerCase())
       .sort()
       .join(';');
@@ -36,16 +61,24 @@ class R2Service {
       })
       .join('&');
 
+    // Create canonical headers string
+    const canonicalHeaders = Object.keys(normalizedHeaders)
+      .sort()
+      .map(key => `${key}:${normalizedHeaders[key].trim()}\n`)
+      .join('');
+
+    const payloadHash = typeof body === 'string' 
+      ? crypto.createHash('sha256').update(body || '').digest('hex') 
+      : body || crypto.createHash('sha256').update('').digest('hex');
+
     const canonicalRequest = [
       method,
       path,
-      canonicalQueryString, // Query string
-      ...Object.keys(headers)
-        .sort()
-        .map(h => `${h.toLowerCase()}:${headers[h]}\n`),
+      canonicalQueryString,
+      canonicalHeaders,
       '',
       signedHeaders,
-      typeof body === 'string' ? crypto.createHash('sha256').update(body).digest('hex') : body,
+      payloadHash,
     ].join('\n');
 
     const scope = `${date}/${this.region}/s3/aws4_request`;
@@ -62,10 +95,14 @@ class R2Service {
     const key4 = crypto.createHmac('sha256', key3).update('aws4_request').digest();
     const signature = crypto.createHmac('sha256', key4).update(stringToSign).digest('hex');
 
+    console.log('Canonical Request (first 300 chars):', canonicalRequest.substring(0, 300));
+    console.log('String to Sign (first 300 chars):', stringToSign.substring(0, 300));
+
     return {
       ...headers,
       'Authorization': `AWS4-HMAC-SHA256 Credential=${this.accessKeyId}/${scope},SignedHeaders=${signedHeaders},Signature=${signature}`,
       'x-amz-date': timestamp,
+      'x-amz-content-sha256': payloadHash,
     };
   }
 
@@ -157,12 +194,26 @@ class R2Service {
       const path = `/${this.bucketName}`;
       const url = `${this.endpoint}${path}?${queryString}`;
       
+      // Debug logging
+      console.log('Listing objects with:');
+      console.log('URL:', url);
+      console.log('Query params:', queryParams);
+      
       const headers = {
         'Host': new URL(this.endpoint).host,
         'x-amz-content-sha256': crypto.createHash('sha256').update('').digest('hex'),
       };
+      
+      // Debug headers
+      console.log('Headers before signing:', headers);
 
       const signedHeaders = this.generateSignatureHeaders('GET', path, headers, '', queryParams);
+      
+      console.log('Signed headers (partial):', {
+        'Host': signedHeaders.Host,
+        'Authorization': signedHeaders.Authorization ? signedHeaders.Authorization.substring(0, 100) + '...' : null,
+        'x-amz-date': signedHeaders['x-amz-date']
+      });
 
       const response = await axios({
         method: 'GET',
@@ -177,6 +228,8 @@ class R2Service {
       };
     } catch (error) {
       console.error('Error listing R2 objects:', error.response?.data || error.message);
+      console.error('Error status:', error.response?.status);
+      console.error('Error headers:', error.response?.headers);
       throw error;
     }
   }
