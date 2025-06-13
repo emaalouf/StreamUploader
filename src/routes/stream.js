@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const cloudflareStream = require('../services/cloudflareStream');
+const { uploadLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
@@ -24,7 +25,7 @@ const upload = multer({
 });
 
 // Get direct upload URL
-router.post('/get-upload-url', async (req, res) => {
+router.post('/get-upload-url', uploadLimiter, async (req, res) => {
   try {
     const response = await cloudflareStream.getUploadUrl(req.body);
     res.json(response);
@@ -38,7 +39,7 @@ router.post('/get-upload-url', async (req, res) => {
 });
 
 // Direct upload to Cloudflare Stream
-router.post('/upload', upload.single('file'), async (req, res) => {
+router.post('/upload', uploadLimiter, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ 

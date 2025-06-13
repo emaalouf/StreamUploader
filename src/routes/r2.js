@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const r2Service = require('../services/r2Service');
+const { uploadLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
@@ -24,7 +25,7 @@ const upload = multer({
 });
 
 // Upload audio file to R2 bucket
-router.post('/upload', upload.single('file'), async (req, res) => {
+router.post('/upload', uploadLimiter, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ 
