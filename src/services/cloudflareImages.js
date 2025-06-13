@@ -6,6 +6,7 @@ class CloudflareImagesService {
     this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
     this.apiToken = process.env.CLOUDFLARE_API_TOKEN;
     this.baseUrl = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/images/v1`;
+    this.deliveryUrl = 'https://imagedelivery.net/_JDMrXYUU5KuF_v5TckJoQ';
   }
 
   /**
@@ -60,9 +61,13 @@ class CloudflareImagesService {
         },
       });
 
+      // Add delivery URL to the response
+      const result = response.data.result;
+      result.deliveryUrl = `${this.deliveryUrl}/${result.id}`;
+
       return {
         success: true,
-        result: response.data.result,
+        result: result,
       };
     } catch (error) {
       console.error('Error getting direct upload URL:', error.response?.data || error.message);
@@ -99,10 +104,14 @@ class CloudflareImagesService {
         data: form,
       });
 
+      // Add the delivery URL to the response
+      const result = uploadResponse.data.result || {};
+      result.id = id;
+      result.deliveryUrl = `${this.deliveryUrl}/${id}`;
+
       return {
         success: true,
-        result: uploadResponse.data.result,
-        id: id,
+        result: result,
       };
     } catch (error) {
       console.error('Error uploading image:', error.response?.data || error.message);
@@ -126,9 +135,13 @@ class CloudflareImagesService {
         },
       });
 
+      // Add delivery URL to the response
+      const result = response.data.result;
+      result.deliveryUrl = `${this.deliveryUrl}/${imageId}`;
+
       return {
         success: true,
-        result: response.data.result,
+        result: result,
       };
     } catch (error) {
       console.error('Error getting image details:', error.response?.data || error.message);
