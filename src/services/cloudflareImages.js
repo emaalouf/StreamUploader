@@ -2,11 +2,11 @@ const axios = require('axios');
 require('dotenv').config();
 
 // Cloudflare Images API credentials
-const CF_ACCOUNT_ID = process.env.CF_ACCOUNT_ID;
+const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
 const CF_IMAGES_API_TOKEN = process.env.CF_IMAGES_API_TOKEN;
 
 // Base URL for Cloudflare Images API
-const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/images/v1`;
+const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1`;
 
 /**
  * List all images
