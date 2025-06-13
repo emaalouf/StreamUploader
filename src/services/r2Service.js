@@ -129,6 +129,123 @@ class R2Service {
 
     return `${this.endpoint}${path}?${params.toString()}`;
   }
+
+  /**
+   * List objects in the R2 bucket
+   * @param {Object} options - Listing options
+   * @returns {Promise<Object>} List of objects
+   */
+  async listObjects(options = {}) {
+    try {
+      const queryParams = new URLSearchParams();
+      
+      if (options.prefix) queryParams.append('prefix', options.prefix);
+      if (options.delimiter) queryParams.append('delimiter', options.delimiter);
+      if (options.maxKeys) queryParams.append('max-keys', options.maxKeys);
+      if (options.startAfter) queryParams.append('start-after', options.startAfter);
+
+      const path = `/${this.bucketName}`;
+      const url = `${this.endpoint}${path}?${queryParams.toString()}`;
+      
+      const headers = {
+        'Host': new URL(this.endpoint).host,
+        'x-amz-content-sha256': crypto.createHash('sha256').update('').digest('hex'),
+      };
+
+      const signedHeaders = this.generateSignatureHeaders('GET', path, headers, '');
+
+      const response = await axios({
+        method: 'GET',
+        url,
+        headers: signedHeaders,
+      });
+
+      return {
+        success: true,
+        objects: response.data?.Contents || [],
+        prefixes: response.data?.CommonPrefixes || [],
+      };
+    } catch (error) {
+      console.error('Error listing R2 objects:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get object information (head)
+   * @param {String} fileName - Object key/name
+   * @returns {Promise<Object>} Object information
+   */
+  async getObjectInfo(fileName) {
+    try {
+      const path = `/${this.bucketName}/${fileName}`;
+      
+      const headers = {
+        'Host': new URL(this.endpoint).host,
+        'x-amz-content-sha256': crypto.createHash('sha256').update('').digest('hex'),
+      };
+
+      const signedHeaders = this.generateSignatureHeaders('HEAD', path, headers, '');
+
+      const response = await axios({
+        method: 'HEAD',
+        url: `${this.endpoint}${path}`,
+        headers: signedHeaders,
+      });
+
+      return {
+        success: true,
+        fileName,
+        contentType: response.headers['content-type'],
+        contentLength: response.headers['content-length'],
+        etag: response.headers.etag,
+        lastModified: response.headers['last-modified'],
+      };
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        return {
+          success: false,
+          message: 'Object not found',
+          fileName,
+        };
+      }
+      console.error('Error getting R2 object info:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete an object from the R2 bucket
+   * @param {String} fileName - Object key/name
+   * @returns {Promise<Object>} Deletion response
+   */
+  async deleteObject(fileName) {
+    try {
+      const path = `/${this.bucketName}/${fileName}`;
+      
+      const headers = {
+        'Host': new URL(this.endpoint).host,
+        'x-amz-content-sha256': crypto.createHash('sha256').update('').digest('hex'),
+      };
+
+      const signedHeaders = this.generateSignatureHeaders('DELETE', path, headers, '');
+
+      await axios({
+        method: 'DELETE',
+        url: `${this.endpoint}${path}`,
+        headers: signedHeaders,
+      });
+
+      return {
+        success: true,
+        message: 'Object deleted successfully',
+        fileName,
+      };
+    } catch (error) {
+      console.error('Error deleting R2 object:', error.response?.data || error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = new R2Service(); 

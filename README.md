@@ -61,6 +61,22 @@ Rate limit information is returned in the headers:
 
 ### Cloudflare Stream (Images & Videos)
 
+#### List All Videos
+```
+GET /api/stream
+```
+List all videos uploaded to Cloudflare Stream.
+
+**Headers:**
+- `x-api-key`: Your API key (Required)
+
+**Query Parameters:**
+- `limit`: Maximum number of videos to return (Default: 25)
+- `asc`: Sort by creation time in ascending order if true
+- `status`: Filter by video status
+- `before`: Return videos created before this ID
+- `after`: Return videos created after this ID
+
 #### Get Direct Upload URL
 ```
 POST /api/stream/get-upload-url
@@ -102,7 +118,37 @@ Retrieve information about a specific video.
 **Headers:**
 - `x-api-key`: Your API key (Required)
 
+**URL Parameters:**
+- `videoId`: ID of the video to retrieve
+
+#### Delete a Video
+```
+DELETE /api/stream/:videoId
+```
+Delete a video from Cloudflare Stream.
+
+**Headers:**
+- `x-api-key`: Your API key (Required)
+
+**URL Parameters:**
+- `videoId`: ID of the video to delete
+
 ### Cloudflare R2 (Audio Files)
+
+#### List All Objects
+```
+GET /api/r2
+```
+List objects stored in the R2 bucket.
+
+**Headers:**
+- `x-api-key`: Your API key (Required)
+
+**Query Parameters:**
+- `prefix`: Filter objects by prefix/folder
+- `delimiter`: Character used to group keys (Default: "/")
+- `maxKeys`: Maximum number of keys to return (Default: 1000)
+- `startAfter`: Return keys after this key
 
 #### Upload an Audio File
 ```
@@ -125,10 +171,93 @@ Get a presigned URL for an audio file stored in the R2 bucket.
 **Headers:**
 - `x-api-key`: Your API key (Required)
 
+**URL Parameters:**
+- `fileName`: Name of the file
+
 **Query Parameters:**
 - `expiresIn`: Expiration time in seconds (Default: 3600)
 
+#### Get Object Information
+```
+GET /api/r2/info/:fileName
+```
+Get metadata about an object stored in the R2 bucket.
+
+**Headers:**
+- `x-api-key`: Your API key (Required)
+
+**URL Parameters:**
+- `fileName`: Name of the file
+
+#### Delete an Object
+```
+DELETE /api/r2/:fileName
+```
+Delete an object from the R2 bucket.
+
+**Headers:**
+- `x-api-key`: Your API key (Required)
+
+**URL Parameters:**
+- `fileName`: Name of the file to delete
+
 ## Usage Examples
+
+### List All Videos in Cloudflare Stream
+
+```javascript
+fetch('/api/stream', {
+  method: 'GET',
+  headers: {
+    'x-api-key': 'your_api_key_here'
+  }
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));
+```
+
+### Delete a Video
+
+```javascript
+fetch('/api/stream/video_id_here', {
+  method: 'DELETE',
+  headers: {
+    'x-api-key': 'your_api_key_here'
+  }
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));
+```
+
+### List All Audio Files in R2
+
+```javascript
+fetch('/api/r2', {
+  method: 'GET',
+  headers: {
+    'x-api-key': 'your_api_key_here'
+  }
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));
+```
+
+### Delete an Audio File from R2
+
+```javascript
+fetch('/api/r2/filename.mp3', {
+  method: 'DELETE',
+  headers: {
+    'x-api-key': 'your_api_key_here'
+  }
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));
+```
 
 ### Upload an Image or Video to Cloudflare Stream
 

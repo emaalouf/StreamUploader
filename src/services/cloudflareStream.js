@@ -93,6 +93,60 @@ class CloudflareStreamService {
       throw error;
     }
   }
+
+  /**
+   * List all videos in Cloudflare Stream
+   * @param {Object} options - Pagination options
+   * @returns {Promise<Object>} List of videos
+   */
+  async listVideos(options = {}) {
+    try {
+      const queryParams = new URLSearchParams();
+      
+      if (options.limit) queryParams.append('limit', options.limit);
+      if (options.asc) queryParams.append('asc', options.asc);
+      if (options.status) queryParams.append('status', options.status);
+      if (options.before) queryParams.append('before', options.before);
+      if (options.after) queryParams.append('after', options.after);
+
+      const url = `${this.baseUrl}?${queryParams.toString()}`;
+
+      const response = await axios({
+        method: 'GET',
+        url,
+        headers: {
+          'Authorization': `Bearer ${this.apiToken}`,
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('Error listing videos:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a video from Cloudflare Stream
+   * @param {String} videoId - ID of the video to delete
+   * @returns {Promise<Object>} Deletion response
+   */
+  async deleteVideo(videoId) {
+    try {
+      const response = await axios({
+        method: 'DELETE',
+        url: `${this.baseUrl}/${videoId}`,
+        headers: {
+          'Authorization': `Bearer ${this.apiToken}`,
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting video:', error.response?.data || error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = new CloudflareStreamService(); 

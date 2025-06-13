@@ -24,6 +24,29 @@ const upload = multer({
   },
 });
 
+// List all videos
+router.get('/', async (req, res) => {
+  try {
+    // Get pagination parameters from query string
+    const options = {
+      limit: req.query.limit || 25,
+      asc: req.query.asc,
+      status: req.query.status,
+      before: req.query.before,
+      after: req.query.after
+    };
+    
+    const response = await cloudflareStream.listVideos(options);
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      details: error.response?.data || {},
+    });
+  }
+});
+
 // Get direct upload URL
 router.post('/get-upload-url', uploadLimiter, async (req, res) => {
   try {
@@ -74,6 +97,25 @@ router.get('/:videoId', async (req, res) => {
     const { videoId } = req.params;
     const response = await cloudflareStream.getVideo(videoId);
     res.json(response);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      details: error.response?.data || {},
+    });
+  }
+});
+
+// Delete a video
+router.delete('/:videoId', async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const response = await cloudflareStream.deleteVideo(videoId);
+    res.json({
+      success: true,
+      message: 'Video deleted successfully',
+      result: response.result,
+    });
   } catch (error) {
     res.status(500).json({
       success: false,

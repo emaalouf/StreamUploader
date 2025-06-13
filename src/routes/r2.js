@@ -24,6 +24,28 @@ const upload = multer({
   },
 });
 
+// List all objects in R2 bucket
+router.get('/', async (req, res) => {
+  try {
+    // Get listing parameters from query string
+    const options = {
+      prefix: req.query.prefix || '',
+      delimiter: req.query.delimiter || '/',
+      maxKeys: req.query.maxKeys || 1000,
+      startAfter: req.query.startAfter,
+    };
+    
+    const response = await r2Service.listObjects(options);
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      details: error.response?.data || {},
+    });
+  }
+});
+
 // Upload audio file to R2 bucket
 router.post('/upload', uploadLimiter, upload.single('file'), async (req, res) => {
   try {
@@ -63,7 +85,7 @@ router.post('/upload', uploadLimiter, upload.single('file'), async (req, res) =>
   }
 });
 
-// Get presigned URL for a file
+// Get presigned URL
 router.get('/presigned/:fileName', async (req, res) => {
   try {
     const { fileName } = req.params;
@@ -76,6 +98,39 @@ router.get('/presigned/:fileName', async (req, res) => {
       fileName,
       url: presignedUrl,
     });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+// Get object information
+router.get('/info/:fileName', async (req, res) => {
+  try {
+    const { fileName } = req.params;
+    const info = await r2Service.getObjectInfo(fileName);
+    
+    if (!info.success) {
+      return res.status(404).json(info);
+    }
+    
+    res.json(info);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+// Delete object from R2 bucket
+router.delete('/:fileName', async (req, res) => {
+  try {
+    const { fileName } = req.params;
+    const result = await r2Service.deleteObject(fileName);
+    res.json(result);
   } catch (error) {
     res.status(500).json({
       success: false,
