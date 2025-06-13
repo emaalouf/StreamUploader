@@ -7,6 +7,7 @@ const path = require('path');
 // Import routes
 const streamRoutes = require('./routes/stream');
 const r2Routes = require('./routes/r2');
+const imagesRoutes = require('./routes/images');
 
 // Import middlewares
 const { apiKeyAuth, skipAuth } = require('./middleware/auth');
@@ -32,14 +33,16 @@ app.use('/api', apiLimiter);
 // Routes with API key authentication
 app.use('/api/stream', apiKeyAuth, streamRoutes);
 app.use('/api/r2', apiKeyAuth, r2Routes);
+app.use('/api/images', apiKeyAuth, imagesRoutes);
 
 // API documentation route - no authentication required
 app.get('/api', (req, res) => {
   res.json({
-    message: 'Cloudflare Stream and R2 Upload API',
+    message: 'Cloudflare Stream, Images, and R2 Upload API',
     endpoints: {
       stream: '/api/stream/upload',
-      r2: '/api/r2/upload'
+      r2: '/api/r2/upload',
+      images: '/api/images/upload'
     },
     authentication: {
       required: true,
